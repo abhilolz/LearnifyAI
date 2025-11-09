@@ -15,6 +15,15 @@ const moduleSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    relatedVideos: [
+      {
+        videoId: String,
+        title: String,
+        channelTitle: String,
+        thumbnail: String,
+        url: String,
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -1,6 +1,7 @@
 import Lesson from "../models/Lesson.js";
 import Module from "../models/Module.js";
 import { generateLesson } from "../services/generateLesson.js";
+import { fetchRelatedVideos } from "../services/youtubeService.js";
 
 // ✅ Create and save new lesson + modules
 export const createLesson = async (req, res) => {
@@ -40,12 +41,24 @@ export const createLesson = async (req, res) => {
     while ((match = moduleRegex.exec(lessonHTML)) !== null) {
       const title = match[1].trim();
       const content = match[2].trim();
+
+      // Skip lesson overview (already stored)
       if (title.toLowerCase() !== "lesson overview") {
-        modules.push({ lessonId: savedLesson._id, title, content });
+        // 🎥 Fetch related videos using YouTube Data API
+        const relatedVideos = await fetchRelatedVideos(
+          `${lessonHeading} ${title}`
+        );
+
+        modules.push({
+          lessonId: savedLesson._id,
+          title,
+          content,
+          relatedVideos,
+        });
       }
     }
 
-    // ✅ Save modules
+    // ✅ Save all modules
     await Module.insertMany(modules);
     console.log(`✅ ${modules.length} modules saved for ${lessonHeading}`);
 
@@ -71,21 +84,18 @@ export const getLessons = async (req, res) => {
   }
 };
 
-// ✅ Delete lesson + its modules
+// ✅ Delete a lesson and its modules
 export const deleteLesson = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Delete all linked modules first
     await Module.deleteMany({ lessonId: id });
-
-    // Delete the lesson itself
     await Lesson.findByIdAndDelete(id);
 
     console.log(`🗑️ Deleted lesson and modules for ID: ${id}`);
     res
       .status(200)
-      .json({ message: "Lesson and its modules deleted successfully" });
+      .json({ message: "Lesson and modules deleted successfully" });
   } catch (err) {
     console.error("❌ Error deleting lesson:", err.message);
     res.status(500).json({ error: "Failed to delete lesson." });
